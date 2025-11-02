@@ -2,109 +2,118 @@ import React, { useState } from "react";
 
 export default function DailyEntry({ customers, addEntry }) {
   const today = new Date().toISOString().split("T")[0];
+  const [entries, setEntries] = useState(
+    customers.map((c) => ({
+      customerId: c.id,
+      customerName: c.name,
+      quantity: c.defaultQty || 1,
+      rate: c.rate || 45,
+      present: true,
+    }))
+  );
 
-  const [form, setForm] = useState({
-    customerId: "",
-    quantity: "",
-    rate: 45, // default rate
-  });
+  const handleToggle = (id) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.customerId === id ? { ...e, present: !e.present } : e))
+    );
+  };
+
+  const handleQtyChange = (id, qty) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.customerId === id ? { ...e, quantity: qty } : e))
+    );
+  };
+
+  const speakInHindi = (text) => {
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = "hi-IN"; // Hindi
+    msg.rate = 1;
+    msg.pitch = 1;
+    window.speechSynthesis.speak(msg);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.customerId || !form.quantity) {
-      alert("Please select customer and enter quantity.");
+    const presentEntries = entries.filter((e) => e.present);
+    const absentEntries = entries.filter((e) => !e.present);
+
+    if (presentEntries.length === 0) {
+      alert("कोई ग्राहक उपस्थित नहीं है!");
+      speakInHindi("कोई ग्राहक उपस्थित नहीं है।");
       return;
     }
 
-    const selectedCustomer = customers.find(
-      (c) => String(c.id) === String(form.customerId)
-    );
-    if (!selectedCustomer) {
-      alert("Customer not found!");
-      return;
-    }
-
-    const qty = parseFloat(form.quantity);
-    const rate = parseFloat(form.rate || selectedCustomer.rate || 45);
-    const total = qty * rate;
-
-    addEntry({
-      date: today,
-      customerId: selectedCustomer.id, // always store number
-      customerName: selectedCustomer.name, // ✅ add name for easy access
-      quantity: qty,
-      rate,
-      total,
+    // Save entries
+    presentEntries.forEach((e) => {
+      addEntry({
+        date: today,
+        customerId: e.customerId,
+        customerName: e.customerName,
+        quantity: e.quantity,
+        rate: e.rate,
+        total: e.quantity * e.rate,
+      });
     });
 
-    // Reset form
-    setForm({ customerId: "", quantity: "", rate: 45 });
+    const message = `आज की एंट्री सफल रही। ${presentEntries.length} ग्राहक उपस्थित हैं और ${absentEntries.length} अनुपस्थित हैं।`;
+    alert(message);
+    speakInHindi(message);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({
-      ...f,
-      [name]: value,
-      // auto-fill rate when customer changes
-      ...(name === "customerId" && {
-        rate:
-          customers.find((c) => String(c.id) === String(value))?.rate || 45,
-      }),
-    }));
+  const markAllPresent = () => {
+    setEntries((prev) => prev.map((e) => ({ ...e, present: true })));
+    speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
   return (
     <div style={{ padding: "15px" }}>
-      <h2>📝 Daily Entry ({today})</h2>
+      <h2>🧾 Daily Entry & Attendance ({today})</h2>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "grid", gap: "10px", maxWidth: "400px" }}
-      >
-        <label>
-          Customer:
-          <select
-            name="customerId"
-            value={form.customerId}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Customer</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+      <button onClick={markAllPresent}>✅ सभी उपस्थित</button>
+
+      <form onSubmit={handleSubmit}>
+        <table border="1" width="100%" cellPadding="6" style={{ marginTop: "10px" }}>
+          <thead>
+            <tr>
+              <th>उपस्थित</th>
+              <th>ग्राहक</th>
+              <th>दूध (L)</th>
+              <th>रेट (₹)</th>
+              <th>कुल (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
+              <tr key={e.customerId} style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={e.present}
+                    onChange={() => handleToggle(e.customerId)}
+                  />
+                </td>
+                <td>{e.customerName}</td>
+                <td>
+                  <input
+                    type="number"
+                    value={e.quantity}
+                    disabled={!e.present}
+                    onChange={(ev) => handleQtyChange(e.customerId, parseFloat(ev.target.value))}
+                    step="0.1"
+                    style={{ width: "60px" }}
+                  />
+                </td>
+                <td>{e.rate}</td>
+                <td>₹{(e.quantity * e.rate).toFixed(2)}</td>
+              </tr>
             ))}
-          </select>
-        </label>
+          </tbody>
+        </table>
 
-        <label>
-          Quantity (in litres):
-          <input
-            type="number"
-            name="quantity"
-            value={form.quantity}
-            onChange={handleChange}
-            step="0.1"
-            required
-          />
-        </label>
-
-        <label>
-          Rate (₹ per litre):
-          <input
-            type="number"
-            name="rate"
-            value={form.rate}
-            onChange={handleChange}
-            step="0.5"
-            required
-          />
-        </label>
-
-        <button type="submit">Add Entry</button>
+        <button type="submit" style={{ marginTop: "10px" }}>
+          💾 आज की एंट्री सेव करें
+        </button>
       </form>
     </div>
   );
