@@ -11,36 +11,58 @@ export default function DailyEntry({ customers, addEntry }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!form.customerId || !form.quantity) {
       alert("Please select customer and enter quantity.");
       return;
     }
 
+    const selectedCustomer = customers.find(
+      (c) => String(c.id) === String(form.customerId)
+    );
+    if (!selectedCustomer) {
+      alert("Customer not found!");
+      return;
+    }
+
     const qty = parseFloat(form.quantity);
-    const rate = parseFloat(form.rate);
+    const rate = parseFloat(form.rate || selectedCustomer.rate || 45);
     const total = qty * rate;
 
     addEntry({
       date: today,
-      customerId: form.customerId,
+      customerId: selectedCustomer.id, // always store number
+      customerName: selectedCustomer.name, // ✅ add name for easy access
       quantity: qty,
       rate,
       total,
     });
 
+    // Reset form
     setForm({ customerId: "", quantity: "", rate: 45 });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    setForm((f) => ({
+      ...f,
+      [name]: value,
+      // auto-fill rate when customer changes
+      ...(name === "customerId" && {
+        rate:
+          customers.find((c) => String(c.id) === String(value))?.rate || 45,
+      }),
+    }));
   };
 
   return (
     <div style={{ padding: "15px" }}>
       <h2>📝 Daily Entry ({today})</h2>
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px", maxWidth: "400px" }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "grid", gap: "10px", maxWidth: "400px" }}
+      >
         <label>
           Customer:
           <select
