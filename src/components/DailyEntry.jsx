@@ -2,15 +2,26 @@ import React, { useState } from "react";
 
 export default function DailyEntry({ customers, addEntry }) {
   const today = new Date().toISOString().split("T")[0];
+
+  // initialize each customer with default qty, rate, and present status
   const [entries, setEntries] = useState(
     customers.map((c) => ({
       customerId: c.id,
       customerName: c.name,
-      quantity: c.defaultQty || 1,
-      rate: c.rate || 45,
+      quantity: c.defaultQty || 1, // default qty per customer
+      rate: c.rate || 45,          // default rate
       present: true,
     }))
   );
+
+  // 🔊 speak Hindi text
+  const speakInHindi = (text) => {
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = "hi-IN";
+    msg.rate = 1.0;
+    msg.pitch = 1;
+    window.speechSynthesis.speak(msg);
+  };
 
   const handleToggle = (id) => {
     setEntries((prev) =>
@@ -20,16 +31,23 @@ export default function DailyEntry({ customers, addEntry }) {
 
   const handleQtyChange = (id, qty) => {
     setEntries((prev) =>
-      prev.map((e) => (e.customerId === id ? { ...e, quantity: qty } : e))
+      prev.map((e) =>
+        e.customerId === id ? { ...e, quantity: parseFloat(qty) || 0 } : e
+      )
     );
   };
 
-  const speakInHindi = (text) => {
-    const msg = new SpeechSynthesisUtterance(text);
-    msg.lang = "hi-IN"; // Hindi
-    msg.rate = 1;
-    msg.pitch = 1;
-    window.speechSynthesis.speak(msg);
+  const handleRateChange = (id, rate) => {
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.customerId === id ? { ...e, rate: parseFloat(rate) || 0 } : e
+      )
+    );
+  };
+
+  const markAllPresent = () => {
+    setEntries((prev) => prev.map((e) => ({ ...e, present: true })));
+    speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
   const handleSubmit = (e) => {
@@ -44,7 +62,7 @@ export default function DailyEntry({ customers, addEntry }) {
       return;
     }
 
-    // Save entries
+    // ✅ add entries to records
     presentEntries.forEach((e) => {
       addEntry({
         date: today,
@@ -56,14 +74,14 @@ export default function DailyEntry({ customers, addEntry }) {
       });
     });
 
-    const message = `आज की एंट्री सफल रही। ${presentEntries.length} ग्राहक उपस्थित हैं और ${absentEntries.length} अनुपस्थित हैं।`;
+    // ✅ Make Hindi summary
+    const totalMilk = presentEntries.reduce((sum, e) => sum + e.quantity, 0);
+    const message = `आज की एंट्री सफल रही। ${presentEntries.length} ग्राहक उपस्थित हैं, ${absentEntries.length} अनुपस्थित हैं, और कुल ${totalMilk.toFixed(
+      1
+    )} लीटर दूध की एंट्री हुई है।`;
+
     alert(message);
     speakInHindi(message);
-  };
-
-  const markAllPresent = () => {
-    setEntries((prev) => prev.map((e) => ({ ...e, present: true })));
-    speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
   return (
@@ -85,7 +103,10 @@ export default function DailyEntry({ customers, addEntry }) {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.customerId} style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}>
+              <tr
+                key={e.customerId}
+                style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}
+              >
                 <td>
                   <input
                     type="checkbox"
@@ -99,12 +120,24 @@ export default function DailyEntry({ customers, addEntry }) {
                     type="number"
                     value={e.quantity}
                     disabled={!e.present}
-                    onChange={(ev) => handleQtyChange(e.customerId, parseFloat(ev.target.value))}
+                    onChange={(ev) =>
+                      handleQtyChange(e.customerId, ev.target.value)
+                    }
                     step="0.1"
                     style={{ width: "60px" }}
                   />
                 </td>
-                <td>{e.rate}</td>
+                <td>
+                  <input
+                    type="number"
+                    value={e.rate}
+                    onChange={(ev) =>
+                      handleRateChange(e.customerId, ev.target.value)
+                    }
+                    step="0.5"
+                    style={{ width: "70px" }}
+                  />
+                </td>
                 <td>₹{(e.quantity * e.rate).toFixed(2)}</td>
               </tr>
             ))}
