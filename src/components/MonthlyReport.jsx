@@ -46,12 +46,11 @@ export default function MonthlyReport({ customers, entries }) {
       ) : (
         <table border="1" width="100%" cellPadding="6">
           <thead>
-            <tr style={{ background: "#e3f2fd" }}>
+            <tr>
               <th>ग्राहक</th>
               <th>कुल दूध (लीटर)</th>
               <th>दर (₹/लीटर)</th>
               <th>कुल ₹</th>
-              <th>🧾 टोटल (₹)</th>
               <th>Send</th>
             </tr>
           </thead>
@@ -59,16 +58,12 @@ export default function MonthlyReport({ customers, entries }) {
             {customers.map((c) => {
               const data = grouped[c.id];
               if (!data) return null;
-              const total = data.total.toFixed(2);
               return (
                 <tr key={c.id}>
                   <td>{c.name}</td>
                   <td>{data.qty.toFixed(1)}</td>
                   <td>{c.rate}</td>
-                  <td>₹{(data.qty * c.rate).toFixed(2)}</td>
-                  <td>
-                    <strong>₹{total}</strong>
-                  </td>
+                  <td>₹{data.total.toFixed(2)}</td>
                   <td>
                     <button onClick={() => sendWhatsAppReport(c, data)}>
                       📲 Send
@@ -77,18 +72,11 @@ export default function MonthlyReport({ customers, entries }) {
                 </tr>
               );
             })}
-            <tr style={{ background: "#ffe0b2" }}>
-              <td>
-                <strong>कुल</strong>
-              </td>
-              <td>
-                <strong>{overallQty.toFixed(1)}</strong>
-              </td>
+            <tr>
+              <td><strong>कुल</strong></td>
+              <td><strong>{overallQty.toFixed(1)}</strong></td>
               <td>—</td>
-              <td>—</td>
-              <td>
-                <strong>₹{overallTotal.toFixed(2)}</strong>
-              </td>
+              <td><strong>₹{overallTotal.toFixed(2)}</strong></td>
               <td>—</td>
             </tr>
           </tbody>
