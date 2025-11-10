@@ -3,29 +3,31 @@ import React, { useState } from "react";
 export default function DailyEntry({ customers, addEntry }) {
   const today = new Date().toISOString().split("T")[0];
 
-  // initialize each customer with default qty, rate, and present status
   const [entries, setEntries] = useState(
     customers.map((c) => ({
       customerId: c.id,
       customerName: c.name,
-      quantity: c.defaultQty || 1, // default qty per customer
-      rate: c.rate || 45,          // default rate
+      quantity: c.defaultQty || 1,
+      rate: c.rate || 45,
       present: true,
     }))
   );
 
-  // 🔊 speak Hindi text
+  // ✅ Hindi Voice System — Fully Fixed
   const speakInHindi = (text) => {
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = "hi-IN";
-    msg.rate = 1.0;
     msg.pitch = 1;
+    msg.rate = 1;
+    window.speechSynthesis.cancel();
     window.speechSynthesis.speak(msg);
   };
 
   const handleToggle = (id) => {
     setEntries((prev) =>
-      prev.map((e) => (e.customerId === id ? { ...e, present: !e.present } : e))
+      prev.map((e) =>
+        e.customerId === id ? { ...e, present: !e.present } : e
+      )
     );
   };
 
@@ -50,39 +52,40 @@ export default function DailyEntry({ customers, addEntry }) {
     speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
- const handleSubmit = (e) => {
-  e.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-  const presentEntries = entries.filter((e) => e.present);
-  const absentEntries = entries.filter((e) => !e.present);
+    const presentEntries = entries.filter((e) => e.present);
 
-  if (presentEntries.length === 0) {
-    alert("कोई ग्राहक उपस्थित नहीं है!");
-    speakInHindi("कोई ग्राहक उपस्थित नहीं है।");
-    return;
-  }
+    if (presentEntries.length === 0) {
+      alert("कोई ग्राहक उपस्थित नहीं है!");
+      speakInHindi("कोई ग्राहक उपस्थित नहीं है।");
+      return;
+    }
 
-  presentEntries.forEach((e) => {
-    addEntry({
-      date: today,
-      customerId: e.customerId,
-      customerName: e.customerName,
-      quantity: e.quantity,
-      rate: e.rate,
-      total: e.quantity * e.rate,
+    presentEntries.forEach((e) => {
+      addEntry({
+        date: today,
+        customerId: e.customerId,
+        customerName: e.customerName, // ✅ Important: name included
+        quantity: e.quantity,
+        rate: e.rate,
+        total: e.quantity * e.rate,
+      });
+
+      // ✅ Correct speaking line per entry
+      speakInHindi(`${e.customerName} के लिए ${e.quantity} लीटर दूध दर्ज किया गया है।`);
     });
-  });
 
-  const totalMilk = presentEntries.reduce((sum, e) => sum + (e.quantity || 0), 0);
+    const totalMilk = presentEntries.reduce((sum, e) => sum + e.quantity, 0);
 
-  const message = `आज की एंट्री सफल रही।
-  कुल ${presentEntries.length} ग्राहक उपस्थित हैं।
-  कुल दूध ${totalMilk.toFixed(2)} लीटर है।`;
+    const summary = `आज की एंट्री सफल रही।
+कुल ${presentEntries.length} ग्राहक उपस्थित।
+कुल दूध ${totalMilk.toFixed(2)} लीटर।`;
 
-  alert(message);
-  speakInHindi(message);
-};
-
+    alert(summary);
+    speakInHindi(summary);
+  };
 
   return (
     <div style={{ padding: "15px" }}>
@@ -103,10 +106,7 @@ export default function DailyEntry({ customers, addEntry }) {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr
-                key={e.customerId}
-                style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}
-              >
+              <tr key={e.customerId} style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}>
                 <td>
                   <input
                     type="checkbox"
@@ -120,9 +120,7 @@ export default function DailyEntry({ customers, addEntry }) {
                     type="number"
                     value={e.quantity}
                     disabled={!e.present}
-                    onChange={(ev) =>
-                      handleQtyChange(e.customerId, ev.target.value)
-                    }
+                    onChange={(ev) => handleQtyChange(e.customerId, ev.target.value)}
                     step="0.1"
                     style={{ width: "60px" }}
                   />
@@ -131,9 +129,7 @@ export default function DailyEntry({ customers, addEntry }) {
                   <input
                     type="number"
                     value={e.rate}
-                    onChange={(ev) =>
-                      handleRateChange(e.customerId, ev.target.value)
-                    }
+                    onChange={(ev) => handleRateChange(e.customerId, ev.target.value)}
                     step="0.5"
                     style={{ width: "70px" }}
                   />
