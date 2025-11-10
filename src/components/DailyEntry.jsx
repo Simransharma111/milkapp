@@ -50,39 +50,39 @@ export default function DailyEntry({ customers, addEntry }) {
     speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+ const handleSubmit = (e) => {
+  e.preventDefault();
 
-    const presentEntries = entries.filter((e) => e.present);
-    const absentEntries = entries.filter((e) => !e.present);
+  const presentEntries = entries.filter((e) => e.present);
+  const absentEntries = entries.filter((e) => !e.present);
 
-    if (presentEntries.length === 0) {
-      alert("कोई ग्राहक उपस्थित नहीं है!");
-      speakInHindi("कोई ग्राहक उपस्थित नहीं है।");
-      return;
-    }
+  if (presentEntries.length === 0) {
+    alert("कोई ग्राहक उपस्थित नहीं है!");
+    speakInHindi("कोई ग्राहक उपस्थित नहीं है।");
+    return;
+  }
 
-    // ✅ add entries to records
-    presentEntries.forEach((e) => {
-      addEntry({
-        date: today,
-        customerId: e.customerId,
-        customerName: e.customerName,
-        quantity: e.quantity,
-        rate: e.rate,
-        total: e.quantity * e.rate,
-      });
+  presentEntries.forEach((e) => {
+    addEntry({
+      date: today,
+      customerId: e.customerId,
+      customerName: e.customerName,
+      quantity: e.quantity,
+      rate: e.rate,
+      total: e.quantity * e.rate,
     });
+  });
 
-    // ✅ Make Hindi summary
-    const totalMilk = presentEntries.reduce((sum, e) => sum + e.quantity, 0);
-    const message = `आज की एंट्री सफल रही। ${presentEntries.length} ग्राहक उपस्थित हैं, ${absentEntries.length} अनुपस्थित हैं, और कुल ${totalMilk.toFixed(
-      1
-    )} लीटर दूध की एंट्री हुई है।`;
+  const totalMilk = presentEntries.reduce((sum, e) => sum + (e.quantity || 0), 0);
 
-    alert(message);
-    speakInHindi(message);
-  };
+  const message = `आज की एंट्री सफल रही।
+  कुल ${presentEntries.length} ग्राहक उपस्थित हैं।
+  कुल दूध ${totalMilk.toFixed(2)} लीटर है।`;
+
+  alert(message);
+  speakInHindi(message);
+};
+
 
   return (
     <div style={{ padding: "15px" }}>
