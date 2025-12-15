@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
-export default function DailyEntry({ customers, addEntry }) {
+export default function DailyEntry({ customers, addEntry, allEntries }) {
   const today = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(today);
 
   const [entries, setEntries] = useState(
     customers.map((c) => ({
@@ -13,7 +14,7 @@ export default function DailyEntry({ customers, addEntry }) {
     }))
   );
 
-  // ✅ Hindi Voice System — Fully Fixed
+  // ✅ Hindi Voice System
   const speakInHindi = (text) => {
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = "hi-IN";
@@ -52,6 +53,15 @@ export default function DailyEntry({ customers, addEntry }) {
     speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
+  // 🔒 Duplicate check
+  const isDuplicate = (customerId) => {
+    return allEntries?.some(
+      (entry) =>
+        entry.customerId === customerId &&
+        entry.date === selectedDate
+    );
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -63,23 +73,36 @@ export default function DailyEntry({ customers, addEntry }) {
       return;
     }
 
+    speakInHindi(`${selectedDate} की एंट्री दर्ज की जा रही है।`);
+
     presentEntries.forEach((e) => {
+      if (isDuplicate(e.customerId)) {
+        alert(
+          `${e.customerName} की ${selectedDate} की एंट्री पहले से मौजूद है!`
+        );
+        speakInHindi(
+          `${e.customerName} की इस तारीख की एंट्री पहले से मौजूद है।`
+        );
+        return;
+      }
+
       addEntry({
-        date: today,
+        date: selectedDate,
         customerId: e.customerId,
-        customerName: e.customerName, // ✅ Important: name included
+        customerName: e.customerName,
         quantity: e.quantity,
         rate: e.rate,
         total: e.quantity * e.rate,
       });
 
-      // ✅ Correct speaking line per entry
-      speakInHindi(`${e.customerName} के लिए ${e.quantity} लीटर दूध दर्ज किया गया है।`);
+      speakInHindi(
+        `${e.customerName} के लिए ${e.quantity} लीटर दूध दर्ज किया गया है।`
+      );
     });
 
     const totalMilk = presentEntries.reduce((sum, e) => sum + e.quantity, 0);
 
-    const summary = `आज की एंट्री सफल रही।
+    const summary = `एंट्री सफल रही।
 कुल ${presentEntries.length} ग्राहक उपस्थित।
 कुल दूध ${totalMilk.toFixed(2)} लीटर।`;
 
@@ -89,7 +112,20 @@ export default function DailyEntry({ customers, addEntry }) {
 
   return (
     <div style={{ padding: "15px" }}>
-      <h2>🧾 Daily Entry & Attendance ({today})</h2>
+      <h2>🧾 Daily Entry & Attendance ({selectedDate})</h2>
+
+      {/* 📅 Date Picker */}
+      <div style={{ marginBottom: "10px" }}>
+        <label>
+          📅 तारीख चुनें:{" "}
+          <input
+            type="date"
+            value={selectedDate}
+            max={today}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </label>
+      </div>
 
       <button onClick={markAllPresent}>✅ सभी उपस्थित</button>
 
@@ -106,7 +142,10 @@ export default function DailyEntry({ customers, addEntry }) {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.customerId} style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}>
+              <tr
+                key={e.customerId}
+                style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}
+              >
                 <td>
                   <input
                     type="checkbox"
@@ -120,7 +159,9 @@ export default function DailyEntry({ customers, addEntry }) {
                     type="number"
                     value={e.quantity}
                     disabled={!e.present}
-                    onChange={(ev) => handleQtyChange(e.customerId, ev.target.value)}
+                    onChange={(ev) =>
+                      handleQtyChange(e.customerId, ev.target.value)
+                    }
                     step="0.1"
                     style={{ width: "60px" }}
                   />
@@ -129,7 +170,9 @@ export default function DailyEntry({ customers, addEntry }) {
                   <input
                     type="number"
                     value={e.rate}
-                    onChange={(ev) => handleRateChange(e.customerId, ev.target.value)}
+                    onChange={(ev) =>
+                      handleRateChange(e.customerId, ev.target.value)
+                    }
                     step="0.5"
                     style={{ width: "70px" }}
                   />
@@ -141,7 +184,7 @@ export default function DailyEntry({ customers, addEntry }) {
         </table>
 
         <button type="submit" style={{ marginTop: "10px" }}>
-          💾 आज की एंट्री सेव करें
+          💾 एंट्री सेव करें
         </button>
       </form>
     </div>
