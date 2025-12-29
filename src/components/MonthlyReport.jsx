@@ -32,8 +32,7 @@ export default function MonthlyReport({ customers, entries }) {
       1
     )} लीटर\nदर: ₹${customer.rate}/लीटर\nकुल राशि: ₹${data.total.toFixed(
       2
-    )}\n\nधन्यवाद!\n- मेंनका मिल्क सप्लाई`;
-    const url = `https://wa.me/${customer.mobile}?text=${encodeURIComponent(msg)}`;
+    )}\n\nधन्यवाद!\n- राधे राधे`- मेंनका मिल्क सप्`https://wa.me/${customer.mobile}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
   };
 
