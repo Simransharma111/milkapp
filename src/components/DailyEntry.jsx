@@ -4,10 +4,15 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
 
-  // 🔒 Past dates lock
-  const isDateLocked = selectedDate !== today;
+  // 🔍 Check if ANY entry exists for selected date
+  const hasAnyEntryForDate = allEntries?.some(
+    (e) => e.date === selectedDate
+  );
 
-  // Initial entries
+  // 🔒 Lock only if past date AND already has entry
+  const isDateLocked = selectedDate !== today && hasAnyEntryForDate;
+
+  // Initial state
   const [entries, setEntries] = useState(
     customers.map((c) => ({
       customerId: c.id,
@@ -22,7 +27,6 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
   const speakInHindi = (text) => {
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = "hi-IN";
-    msg.rate = 1;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(msg);
   };
@@ -38,7 +42,7 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
     return map;
   }, [allEntries, selectedDate]);
 
-  // 🔒 Duplicate check
+  // 🔒 Per-customer duplicate check
   const isDuplicate = (customerId) =>
     allEntries?.some(
       (e) => e.customerId === customerId && e.date === selectedDate
@@ -81,8 +85,8 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
     e.preventDefault();
 
     if (isDateLocked) {
-      alert("पुरानी तारीख की एंट्री बदली नहीं जा सकती!");
-      speakInHindi("पुरानी तारीख की एंट्री बदली नहीं जा सकती।");
+      alert("इस तारीख की एंट्री पहले से मौजूद है, बदली नहीं जा सकती!");
+      speakInHindi("इस तारीख की एंट्री पहले से मौजूद है।");
       return;
     }
 
@@ -117,14 +121,14 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
     speakInHindi(msg);
   };
 
-  // ❌ Missing attendance?
+  // 🔴 Missing attendance?
   const hasMissing = customers.some((c) => !attendanceMap[c.id]);
 
   return (
     <div style={{ padding: "15px" }}>
       <h2>🧾 Daily Attendance ({selectedDate})</h2>
 
-      {/* 📅 Calendar */}
+      {/* 📅 Date Picker */}
       <div style={{ marginBottom: "10px" }}>
         <input
           type="date"
@@ -133,9 +137,10 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
           onChange={(e) => setSelectedDate(e.target.value)}
           style={{
             padding: "6px",
-            border: hasMissing && selectedDate !== today
-              ? "2px solid red"
-              : "2px solid green",
+            border:
+              hasMissing && hasAnyEntryForDate
+                ? "2px solid red"
+                : "2px solid green",
           }}
         />
       </div>
@@ -145,7 +150,12 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
       </button>
 
       <form onSubmit={handleSubmit}>
-        <table border="1" width="100%" cellPadding="6" style={{ marginTop: 10 }}>
+        <table
+          border="1"
+          width="100%"
+          cellPadding="6"
+          style={{ marginTop: 10 }}
+        >
           <thead>
             <tr>
               <th>उपस्थित</th>
@@ -162,7 +172,7 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
                 style={{
                   background: attendanceMap[e.customerId]
                     ? "#e8f5e9"
-                    : selectedDate !== today
+                    : hasAnyEntryForDate
                     ? "#ffebee"
                     : e.present
                     ? "#e8f5e9"
