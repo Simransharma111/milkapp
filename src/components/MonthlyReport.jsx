@@ -2,8 +2,9 @@ import React, { useMemo } from "react";
 
 export default function MonthlyReport({ customers, entries }) {
   const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+
   const monthEntries = useMemo(
-    () => entries.filter((e) => e.date.startsWith(month)),
+    () => entries.filter((e) => e.date?.startsWith(month)),
     [entries, month]
   );
 
@@ -14,25 +15,41 @@ export default function MonthlyReport({ customers, entries }) {
       const id = Number(e.customerId);
       if (!result[id]) result[id] = { qty: 0, total: 0 };
       result[id].qty += Number(e.quantity);
-      // use the entry's rate * qty (each entry already stores correct rate)
       result[id].total += Number(e.quantity) * Number(e.rate);
     });
     return result;
   }, [monthEntries]);
 
   const overallQty = Object.values(grouped).reduce((a, b) => a + b.qty, 0);
-  const overallTotal = Object.values(grouped).reduce((a, b) => a + b.total, 0);
+  const overallTotal = Object.values(grouped).reduce(
+    (a, b) => a + b.total,
+    0
+  );
 
+  // ✅ FIXED WhatsApp function
   const sendWhatsAppReport = (customer, data) => {
     if (!customer.mobile) {
       alert(`Mobile number not set for ${customer.name}`);
       return;
     }
-    const msg = `नमस्ते ${customer.name},\n\n${month} महीने का दूध हिसाब:\nकुल दूध: ${data.qty.toFixed(
-      1
-    )} लीटर\nदर: ₹${customer.rate}/लीटर\nकुल राशि: ₹${data.total.toFixed(
-      2
-    )}\n\nधन्यवाद!\nवाद!\n- राधे-राधे :/hhhhhhttps:/wacuob$encodeURIComponent(msg)}}sg)}`;window.open(url, "_blank");
+
+    // ✅ Clean mobile number (very important)
+    const phone = customer.mobile.toString().replace(/\D/g, "");
+
+    const message = `नमस्ते ${customer.name},
+
+${month} महीने का दूध हिसाब:
+कुल दूध: ${data.qty.toFixed(1)} लीटर
+दर: ₹${customer.rate}/लीटर
+कुल राशि: ₹${data.total.toFixed(2)}
+
+धन्यवाद!
+- राधे राधे`;
+
+    const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+
+    // ✅ This avoids popup block issues
+    window.location.href = url;
   };
 
   return (
@@ -56,6 +73,7 @@ export default function MonthlyReport({ customers, entries }) {
             {customers.map((c) => {
               const data = grouped[c.id];
               if (!data) return null;
+
               return (
                 <tr key={c.id}>
                   <td>{c.name}</td>
