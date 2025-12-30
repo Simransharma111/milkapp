@@ -46,7 +46,7 @@ ${month} महीने का दूध हिसाब:
 धन्यवाद!
 - राधे राधे`;
 
-    const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
     // ✅ This avoids popup block issues
     window.location.href = url;
