@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 export default function DailyEntry({ customers, addEntry, allEntries }) {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
 
+  // 🔒 Past dates lock
+  const isDateLocked = selectedDate !== today;
+
+  // Initial entries
   const [entries, setEntries] = useState(
     customers.map((c) => ({
       customerId: c.id,
@@ -14,17 +18,35 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
     }))
   );
 
-  // ✅ Hindi Voice System
+  // 🔊 Hindi voice
   const speakInHindi = (text) => {
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = "hi-IN";
-    msg.pitch = 1;
     msg.rate = 1;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(msg);
   };
 
+  // 📊 Attendance map for selected date
+  const attendanceMap = useMemo(() => {
+    const map = {};
+    allEntries?.forEach((e) => {
+      if (e.date === selectedDate) {
+        map[e.customerId] = true;
+      }
+    });
+    return map;
+  }, [allEntries, selectedDate]);
+
+  // 🔒 Duplicate check
+  const isDuplicate = (customerId) =>
+    allEntries?.some(
+      (e) => e.customerId === customerId && e.date === selectedDate
+    );
+
+  // Handlers
   const handleToggle = (id) => {
+    if (isDateLocked) return;
     setEntries((prev) =>
       prev.map((e) =>
         e.customerId === id ? { ...e, present: !e.present } : e
@@ -49,21 +71,20 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
   };
 
   const markAllPresent = () => {
+    if (isDateLocked) return;
     setEntries((prev) => prev.map((e) => ({ ...e, present: true })));
     speakInHindi("सभी ग्राहक उपस्थित कर दिए गए हैं।");
   };
 
-  // 🔒 Duplicate check
-  const isDuplicate = (customerId) => {
-    return allEntries?.some(
-      (entry) =>
-        entry.customerId === customerId &&
-        entry.date === selectedDate
-    );
-  };
-
+  // 💾 Submit
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (isDateLocked) {
+      alert("पुरानी तारीख की एंट्री बदली नहीं जा सकती!");
+      speakInHindi("पुरानी तारीख की एंट्री बदली नहीं जा सकती।");
+      return;
+    }
 
     const presentEntries = entries.filter((e) => e.present);
 
@@ -73,18 +94,8 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
       return;
     }
 
-    speakInHindi(`${selectedDate} की एंट्री दर्ज की जा रही है।`);
-
     presentEntries.forEach((e) => {
-      if (isDuplicate(e.customerId)) {
-        alert(
-          `${e.customerName} की ${selectedDate} की एंट्री पहले से मौजूद है!`
-        );
-        speakInHindi(
-          `${e.customerName} की इस तारीख की एंट्री पहले से मौजूद है।`
-        );
-        return;
-      }
+      if (isDuplicate(e.customerId)) return;
 
       addEntry({
         date: selectedDate,
@@ -94,62 +105,76 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
         rate: e.rate,
         total: e.quantity * e.rate,
       });
-
-      speakInHindi(
-        `${e.customerName} के लिए ${e.quantity} लीटर दूध दर्ज किया गया है।`
-      );
     });
 
-    const totalMilk = presentEntries.reduce((sum, e) => sum + e.quantity, 0);
+    const totalMilk = presentEntries.reduce((s, e) => s + e.quantity, 0);
 
-    const summary = `एंट्री सफल रही।
-कुल ${presentEntries.length} ग्राहक उपस्थित।
-कुल दूध ${totalMilk.toFixed(2)} लीटर।`;
+    const msg = `एंट्री सफल रही।
+कुल ग्राहक: ${presentEntries.length}
+कुल दूध: ${totalMilk.toFixed(2)} लीटर`;
 
-    alert(summary);
-    speakInHindi(summary);
+    alert(msg);
+    speakInHindi(msg);
   };
+
+  // ❌ Missing attendance?
+  const hasMissing = customers.some((c) => !attendanceMap[c.id]);
 
   return (
     <div style={{ padding: "15px" }}>
-      <h2>🧾 Daily Entry & Attendance ({selectedDate})</h2>
+      <h2>🧾 Daily Attendance ({selectedDate})</h2>
 
-      {/* 📅 Date Picker */}
+      {/* 📅 Calendar */}
       <div style={{ marginBottom: "10px" }}>
-        <label>
-          📅 तारीख चुनें:{" "}
-          <input
-            type="date"
-            value={selectedDate}
-            max={today}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
-        </label>
+        <input
+          type="date"
+          value={selectedDate}
+          max={today}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          style={{
+            padding: "6px",
+            border: hasMissing && selectedDate !== today
+              ? "2px solid red"
+              : "2px solid green",
+          }}
+        />
       </div>
 
-      <button onClick={markAllPresent}>✅ सभी उपस्थित</button>
+      <button onClick={markAllPresent} disabled={isDateLocked}>
+        ✅ सभी उपस्थित
+      </button>
 
       <form onSubmit={handleSubmit}>
-        <table border="1" width="100%" cellPadding="6" style={{ marginTop: "10px" }}>
+        <table border="1" width="100%" cellPadding="6" style={{ marginTop: 10 }}>
           <thead>
             <tr>
               <th>उपस्थित</th>
               <th>ग्राहक</th>
               <th>दूध (L)</th>
-              <th>रेट (₹)</th>
-              <th>कुल (₹)</th>
+              <th>रेट ₹</th>
+              <th>कुल ₹</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((e) => (
               <tr
                 key={e.customerId}
-                style={{ background: e.present ? "#e8f5e9" : "#ffebee" }}
+                style={{
+                  background: attendanceMap[e.customerId]
+                    ? "#e8f5e9"
+                    : selectedDate !== today
+                    ? "#ffebee"
+                    : e.present
+                    ? "#e8f5e9"
+                    : "#ffebee",
+                  opacity: isDateLocked ? 0.75 : 1,
+                }}
               >
                 <td>
                   <input
                     type="checkbox"
                     checked={e.present}
+                    disabled={isDateLocked}
                     onChange={() => handleToggle(e.customerId)}
                   />
                 </td>
@@ -158,23 +183,23 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
                   <input
                     type="number"
                     value={e.quantity}
-                    disabled={!e.present}
+                    disabled={!e.present || isDateLocked}
                     onChange={(ev) =>
                       handleQtyChange(e.customerId, ev.target.value)
                     }
                     step="0.1"
-                    style={{ width: "60px" }}
+                    style={{ width: 60 }}
                   />
                 </td>
                 <td>
                   <input
                     type="number"
                     value={e.rate}
+                    disabled={isDateLocked}
                     onChange={(ev) =>
                       handleRateChange(e.customerId, ev.target.value)
                     }
-                    step="0.5"
-                    style={{ width: "70px" }}
+                    style={{ width: 70 }}
                   />
                 </td>
                 <td>₹{(e.quantity * e.rate).toFixed(2)}</td>
@@ -183,8 +208,8 @@ export default function DailyEntry({ customers, addEntry, allEntries }) {
           </tbody>
         </table>
 
-        <button type="submit" style={{ marginTop: "10px" }}>
-          💾 एंट्री सेव करें
+        <button type="submit" disabled={isDateLocked} style={{ marginTop: 10 }}>
+          💾 सेव करें
         </button>
       </form>
     </div>
